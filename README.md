@@ -198,10 +198,10 @@
 
 ### Streaming
 
-| Tool              | Product                                                                                                                                                                                     |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Data streaming    | - [Apache Kafka](https://kafka.apache.org/) (**he de facto choice** for streaming data)<br />- [Debezium](https://debezium.io/) (help stream data from **existing datasources** over Kafka) |
-| Stream-processing | - [Apache Flink](https://flink.apache.org/)                                                                                                                                                 |
+| Tool              | Product                                                                                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data streaming    | - [Apache Kafka](https://kafka.apache.org/) (**the de facto choice** for streaming data)<br />- [Debezium](https://debezium.io/) (help stream data from **existing datasources** over Kafka) |
+| Stream-processing | - [Apache Flink](https://flink.apache.org/)                                                                                                                                                  |
 
 ### Public Cloud and Serverless
 

@@ -329,3 +329,101 @@
 - Why many people are choosing microservice architectures:
   - Flexibility in choosing technology, handling robustness and scaling, organizing teams.
 - Still, the choice must be justified by the problems you are trying to solve.
+
+# Chapter 2. How to Model Microservices
+
+- **Decomposition** comes in different forms.
+- Primary technique - Domain-Driven Design.
+
+## What Makes a Good Microservice Boundary
+
+- In essence, microservices are **just another form of MODULAR decomposition**.
+- **Three key concepts/techniques** to working out what makes for a good microservice boundary:
+  1. Information hiding
+  2. Cohesion
+  3. Coupling
+
+### \*Information Hiding
+
+- The **most effective** way to define module boundaries.
+- Benefits of modules:
+  - Improved development time
+  - Comprehensibility
+    - Can be **looked at** in **isolation** and **understood** in isolation.
+  - Flexibility
+    - Can be changed independently.
+- Microservices is just another form of modular architecture.
+- **BUT**, having modules **doesn't result in** you actually achieving these outcomes.
+- By keeping the number of interfaces **small**, it is easier to ensure that we can change one module without impacting others.
+
+### Cohesion
+
+- \***The code that changes together, stays together.**
+- Ease of making changes in business functionality.
+  - Functionality grouped in such a way that we **can make changes in as few places as possible**.
+- Making changes in lots of **different places** is **slower**, and deploying lots of services at once is **risky**.
+
+### Coupling
+
+- **Loosely coupled** - A change to one service should not require a change to another.
+- A loosely coupled service **knows as little as it needs to** about the services with which it collaborates.
+- **Chatty communication** can lead to tight coupling.
+
+### The Interplay of Coupling and Cohesion
+
+- \*A structure is **stable** if **cohesion is STRONG** and **coupling is LOW**.
+- **Cohesion** - The relationship between things inside a boundary (a microservice).
+- **Coupling** - The relationship between things across.
+- **Note:** The world isn't static - Sometimes parts of your system may be going through so much change that stability might be impossible.
+
+## Types of Coupling
+
+- **NOT** all coupling is bad.
+- In fact, some coupling will be **unavoidable**.
+- **What we want** - **Reduce** how much coupling we have.
+- Microservices are a style of **modular** architecture.
+  - Can use a lot of these original **concepts**.
+- Figure 2-1. **The different types of coupling**, from loose (low) to tight (high)
+
+  ![figure-2-1-the-different-types-of-coupling-from-loose-low-to-tight-high](images/figure-2-1-the-different-types-of-coupling-from-loose-low-to-tight-high.png)
+
+### Domain Coupling
+
+- One microservice needs to interact with another microservice.
+- Figure 2-2. An example of domain coupling, where Order Processor needs to make use of the functionality provided by other microservices
+
+  ![figure-2-2-an-example-of-domain-coupling,-where-order-processor-needs-to-make-use-of-the-functionality-provided-by-other-microservices](images/figure-2-2-an-example-of-domain-coupling,-where-order-processor-needs-to-make-use-of-the-functionality-provided-by-other-microservices.png)
+
+- This type of interaction is largely **unavoidable**.
+- **BUT**, we still want to keep this to a **minimum**.
+- \*When a **single** microservice depending on **multiple downstream** services, it **might imply** a microservice that is **doing too much** (too much logic has been **centralized**).
+- Domain coupling can become problematic as more **complex sets of data** are sent between services.
+- **Note:** Share only what you absolutely have to, and send only the absolute **minimum amount of data**.
+
+### Pass-Through Coupling
+
+- One microservice passes data to another microservice purely because the data is **needed by** some other microservice **further downstream**.
+- \*One of the **most problematic** forms of **implementation coupling**.
+
+  - Figure 2-4. **Pass-through coupling**, in which data is passed to a microservice purely because another downstream service needs it
+
+    - ❌ Changes to _Shipping Manifest_ require a **lockstep rollout** of all three microservices (cascade effect).
+
+    ![figure-2-4-pass-through-coupling,-in-which-data-is-passed-to-a-microservice-purely-because-another-downstream-service-needs-it](images/figure-2-4-pass-through-coupling,-in-which-data-is-passed-to-a-microservice-purely-because-another-downstream-service-needs-it.png)
+
+- **First solution** - Bypass the intermediary.
+
+  - Figure 2-5. One way to work around pass-through coupling involves communicating directly with the downstream service
+
+    ![figure-2-5-one-way-to-work-around-pass-through-coupling-involves-communicating-directly-with-the-downstream-service](images/figure-2-5-one-way-to-work-around-pass-through-coupling-involves-communicating-directly-with-the-downstream-service.png)
+
+  - _Order Processor_ speaks directly to _Shipping_.
+  - **Tradeoff**
+    - Increase domain coupling.
+    - Might still be fine, as domain coupling is a **looser form** of coupling.
+
+- **Second solution** - Hide the requirement for a _Shipping Manifest_.
+
+  - Figure 2-6. Hiding the need for a _Shipping Manifest_ from the Order Processor
+
+    ![figure-2-6-hiding-the-need-for-a-shipping-manifest-from-the-order-processor](images/figure-2-6-hiding-the-need-for-a-shipping-manifest-from-the-order-processor.png)

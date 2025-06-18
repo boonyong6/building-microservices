@@ -427,3 +427,59 @@
   - Figure 2-6. Hiding the need for a _Shipping Manifest_ from the Order Processor
 
     ![figure-2-6-hiding-the-need-for-a-shipping-manifest-from-the-order-processor](images/figure-2-6-hiding-the-need-for-a-shipping-manifest-from-the-order-processor.png)
+
+### Common Coupling
+
+- Two or more microservices make use of a **common set of data**.
+  - Shared database, memory or filesystem.
+- Changes to the structure of the data can impact multiple microservices at once.
+- Still acceptable:
+
+  - Figure 2-7. Multiple services accessing shared static reference data related to countries from the same database
+
+    ![figure-2-7-multiple-services-accessing-shared-static-reference-data-related-to-countries-from-the-same-database](images/figure-2-7-multiple-services-accessing-shared-static-reference-data-related-to-countries-from-the-same-database.png)
+
+  - Since **static reference data** doesn't tend to change and is **read-only**, this is still fine.
+
+- Becomes more problematic:
+
+  - If the **structure** of the common data changes more frequently.
+  - If multiple microservices are reading and **writing to the same data**.
+
+- **Problem:**
+
+  - Figure 2-8. An example of common coupling in which both Order Processor and Warehouse are updating the same order record
+
+    ![figure-2-8-an-example-of-common-coupling-in-which-both-order-processor-and-warehouse-are-updating-the-same-order-record](images/figure-2-8-an-example-of-common-coupling-in-which-both-order-processor-and-warehouse-are-updating-the-same-order-record.png)
+
+  - Both microservices **share responsibilities** for managing **different aspects of the life cycle** of an order.
+  - One way to ensure that the state is changed in a correct order would be to create a **finite state machine**, ensuring **invalid state transitions are prohibited**.
+  - Figure 2-9. An overview of the allowable state transitions for an order in MusicCorp
+
+    ![figure-2-9-an-overview-of-the-allowable-state-transitions-for-an-order-in-musiccorp](images/figure-2-9-an-overview-of-the-allowable-state-transitions-for-an-order-in-musiccorp.png)
+
+- **Solution** - Ensure that a **single microservice** manages the order state.
+
+  - Figure 2-10. Both Order Processor and Warehouse can request that changes be made to an order, but the **Order microservice decides which requests are acceptable**
+
+    ![figure-2-10-both-order-processor-and-warehouse-can-request-that-changes-be-made-to-an-order,-but-the-order-microservice-decides-which-requests-are-acceptable](images/figure-2-10-both-order-processor-and-warehouse-can-request-that-changes-be-made-to-an-order,-but-the-order-microservice-decides-which-requests-are-acceptable.png)
+
+- **Alternative:**
+  - Implement the Order service **more than a wrapper** around database CRUD operations.
+  - CRUD wrapper is **a sign of weak cohesion and tighter coupling**, as logic that should be in that service is instead **spread elsewhere**.
+- Potential sources of resource contention (overload shared resource).
+- Common coupling is **sometimes** OK, but **often it's not**.
+- Often indicate a lack of cohesion.
+- One of the **least desirable** forms of coupling.
+
+### Content Coupling (Worst)
+
+- An upstream service **reaches into the internals** of a downstream service and **changes its internal state**.
+- E.g. An external service accessing another microservice's database and changing it directly.
+- The lines of **ownership become less clear**, and it becomes more difficult for developers to change a system.
+- Results in very **poor data integrity**.
+- Figure 2-11. An example of content coupling in which the Warehouse is directly accessing the internal data of the Order service
+
+  ![figure-2-11-an-example-of-content-coupling-in-which-the-warehouse-is-directly-accessing-the-internal-data-of-the-order-service](images/figure-2-11-an-example-of-content-coupling-in-which-the-warehouse-is-directly-accessing-the-internal-data-of-the-order-service.png)
+
+- Also have the issue that the **internal data structure is exposed**.

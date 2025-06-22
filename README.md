@@ -433,7 +433,7 @@
 - Two or more microservices make use of a **common set of data**.
   - Shared database, memory or filesystem.
 - Changes to the structure of the data can impact multiple microservices at once.
-- Still acceptable:
+- Still acceptable, but **not recommended**:
 
   - Figure 2-7. Multiple services accessing shared static reference data related to countries from the same database
 
@@ -483,3 +483,167 @@
   ![figure-2-11-an-example-of-content-coupling-in-which-the-warehouse-is-directly-accessing-the-internal-data-of-the-order-service](images/figure-2-11-an-example-of-content-coupling-in-which-the-warehouse-is-directly-accessing-the-internal-data-of-the-order-service.png)
 
 - Also have the issue that the **internal data structure is exposed**.
+
+## Just Enough Domain-Driven Design
+
+- Some core concepts of DDD:
+  - Ubiquitous language
+  - Aggregate
+  - Bounded context
+
+### Ubiquitous Language
+
+- Common problem - When rich domain language is map to generic code concepts (too abstract).
+
+### Aggregate
+
+- Typically have a **life cycle**, and can be implemented as a **state machine**.
+- Ensure that the code that handles the **state transitions** of an aggregate are **grouped together**, along with the **state itself** (saga state).
+- \*If an outside party requests a **state transition** in an aggregate, the aggregate can say no to **protect business invariants**.
+- Assuming **Finance microservice**'s database stores the **vanilla customer ID** into the `CustID` column.
+
+  - **Problem** - Relationship between the `CustID` column and the remote customer is **entirely implicit**.
+  - **Solution 1** - Store a **URI** to make the relationship explicit.
+  - Figure 2-13. An example of how a relationship between two aggregates in different microservices can be implemented
+
+    ![figure-2-13-an-example-of-how-a-relationship-between-two-aggregates-in-different-microservices-can-be-implemented](images/figure-2-13-an-example-of-how-a-relationship-between-two-aggregates-in-different-microservices-can-be-implemented.png)
+
+  - **Solution 2** - Pseudo-URI scheme (if you aren't building a REST system)
+    - E.g. soundcloud:tracks:123
+
+- Factors that determines how we define aggregates, to **reshape aggregates** over time:
+  - For performance reasons.
+  - For ease of implementation.
+
+### Bounded Context
+
+- E.g. At MusicCorp:
+  - **Core domain** - Warehouse
+  - **Supporting domain** - Finance
+- Bounded contexts hide implementation detail.
+- Internal concerns should be hidden from the outside word.
+
+#### Hidden models
+
+- Figure 2-14. A shared model between the finance department and the warehouse
+
+  - To work out the valuation of the company, finance employees need information about the stock.
+  - May be beneficial to name the internal and external models differently to avoid confusion.
+
+  ![figure-2-14-a-shared-model-between-the-finance-department-and-the-warehouse](images/figure-2-14-a-shared-model-between-the-finance-department-and-the-warehouse.png)
+
+- Figure 2-15. A model that is shared can decide to hide information that should not be shared externally
+
+  ![figure-2-15-a-model-that-is-shared-can-decide-to-hide-information-that-should-not-be-shared-externally](images/figure-2-15-a-model-that-is-shared-can-decide-to-hide-information-that-should-not-be-shared-externally.png)
+
+#### Shared models
+
+- E.g. **Customer** can have **different meanings** in the **different bounded contexts**.
+  - Finance - "Customer"
+  - Warehouse - "Recipient"
+- May need to link both **local concepts** to a **global customer**, to look up common, shared information.
+
+  - Figure 2-13. An example of how a relationship between two aggregates in different microservices can be implemented
+
+    ![figure-2-13-an-example-of-how-a-relationship-between-two-aggregates-in-different-microservices-can-be-implemented](images/figure-2-13-an-example-of-how-a-relationship-between-two-aggregates-in-different-microservices-can-be-implemented.png)
+
+### Mapping Aggregates and Bounded Contexts to Microservices
+
+- Aggregate is a self-contained **state machine** that **focuses on a single domain concept**.
+- \***Service boundaries:**
+  - **Coarse-grained** - One microservice **per bounded context**. **(Preferred)**
+  - **Fine-grained** - One microservice **per aggregate**.
+- \***Note:** One microservice can manage one or more aggregates, but we don't want one aggregate to be managed by more than one microservice.
+
+#### \*Turtles all the way down
+
+- At the start, you identify some coarse-grained bounded contexts. **BUT**, these bounded contexts **can contain further bounded contexts**.
+- By implementing one microservice per coarse-grained context, we can hide future service decomposition decisions.
+- Decision to decompose a service into smaller parts is arguably an **implementation decision**.
+- Figure 2-16. The Warehouse service internally has been split into Inventory and Shipping microservices
+
+  - Another form of **information hiding**.
+  - **Nested approach** - Chunk up the architecture to **simplify testing**.
+
+  ![figure-2-16-the-warehouse-service-internally-has-been-split-into-inventory-and-shipping-microservices](images/figure-2-16-the-warehouse-service-internally-has-been-split-into-inventory-and-shipping-microservices.png)
+
+### Event Storming
+
+- A collaborative brain-storming exercise designed to help **surface a domain model**.
+- Brings together **technical** and **nontechnical** stakeholders.
+- Can be used to build:
+  - Event-driven system
+  - Request/response-oriented system
+
+#### Logistics (How event storming should be run)
+
+- You want **representatives** of all parts of the domain that you plan to model: **users**, **subject matter experts**, **product owners**.
+- Walls to be used for capturing information.
+
+#### The process
+
+- Identify the **DOMAIN EVENTS**.
+  - Things that happen (facts that you care about).
+  - E.g. "Order Placed".
+- Identify the **COMMANDS** that cause these events to happen.
+  - Identity the key **human actors**.
+- \***Note:** Not to let any current implementation warp the perception of what the domain is.
+- With events and commands captured, **AGGREGATES** come next.
+  - **Events** can also highlight what the potential aggregates might be.
+  - E.g. **"Order Placed"**
+    - **"Order"** (noun) could be a potential **aggregate**.
+    - **"Placed"** describes something that can happen, so this could be part of the **life cycle** of the aggregate.
+  - Commands and events are clustered around the aggregate.
+  - Events from one aggregate might trigger behavior in another.
+- Group aggregates into **BOUNDED CONTEXTS**.
+  - Bounded contexts most commonly follow a company's **organizational structure**.
+
+## Alternatives to Business Domain Boundaries
+
+- DDD is **NOT the only technique** for finding microservice boundaries.
+
+### Volatility
+
+- Identify the parts of your system going through **more frequent change** and then extract that functionality into their own services.
+- If your intention is to **SCALE** your application, then **volatility-based decomposition is NOT the right technique**.
+- **Bimodal IT** (Mindset Behind):
+  - Break systems down into two categories, based on **how fast or slow** they need to go.
+    1. "Mode 1" (aka Systems of Record)
+    2. "Mode 2" (aka Systems of Innovation)
+  - **Cons:**
+    - Imply a very **fixed view** (oversimplification).
+    - Fall apart when parts of systems that didn't need to change much in the past suddenly do.
+    - Often becomes a way for people to dump stuff that is hard to change into a nice neat box.
+    - Avoids the fact that quite often changes in functionality require changes in "Systems of Record" (Mode 1) to allow for changes in "Systems of Innovation" (Mode 2).
+  - **Pros:**
+    - Useful if the **main driver** is about **fast time to market**.
+
+### Data
+
+- **Use case** - To limit which services handle **personally identifiable information (PII)**.
+- E.g. A payment company handles **credit card data**, and needs to comply with **Payment Card Industry (PCI) standards** (company's system and processes needed to be **audited**).
+- So, we limit what has to be in this red zone.
+- Segregation of data is often driven by a variety of **privacy** and **security concerns**.
+- Figure 2-17. PaymentCo, which segregates processes based on its use of credit card information to limit the scope of PCI requirements
+
+  ![figure-2-17-paymentco-which-segregates-processes-based-on-its-use-of-credit-card-information-to-limit-the-scope-of-pci-requirements](images/figure-2-17-paymentco-which-segregates-processes-based-on-its-use-of-credit-card-information-to-limit-the-scope-of-pci-requirements.png)
+
+### Technology
+
+- Often a **less than ideal** architecture.
+
+### Organizational
+
+- **Conway's law** - How you organize yourself ends up driving your systems architecture.
+- Figure 2-19. A service boundary split across technical seams
+
+  ![figure-2-19-a-service-boundary-split-across-technical-seams](images/figure-2-19-a-service-boundary-split-across-technical-seams.png)
+
+## Mixing Models and Exceptions
+
+- Follow the guidelines of **information hiding**, **coupling** and **cohesion**.
+- Organizational and **domain-driven** service boundaries are great **starting point**.
+
+## Summary
+
+- **Understanding of our domain** can be vital tool in helping us find these **seams**.

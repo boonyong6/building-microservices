@@ -71,10 +71,8 @@
 
 - **Domain-driven design (DDD)** is a technique to define **service boundaries**.
 - When **service boundaries** are **not well-defined**...
-
   - **Rolling out a feature** that requires changes to **more than one microservice** is **expensive**. You need to coordinate the work across each service (and potentially across separate teams) and carefully **manage the order** in which the new versions of these services are deployed.
   - **Layered architecture** - Each service boundary based on related **technical functionality**.
-
     - Figure 1-3. Making a change across all three tiers is more involved
 
     ![figure-1-3-making-a-change-across-all-three-tiers-is-more-involved](images/figure-1-3-making-a-change-across-all-three-tiers-is-more-involved.png)
@@ -113,7 +111,6 @@
 - **Three tiers** - An architecture that has **high cohesion of related technology** but **low cohesion of business functionality**.
 - To make it easier to make changes, instead we **need to change how we group code, choosing cohesion of business functionality** rather than technology.
 - A **dedicated team** that has **full-end-to-end responsibilities** for making changes.
-
   - Figure 1-4. The UI is broken apart and is owned by a team that also manages the server side functionality that supports the UI
 
     ![figure-1-4-the-ui-is-broken-apart-and-is-owned-by-a-team-that-also-manages-the-server-side-functionality-that-supports-the-ui](images/figure-1-4-the-ui-is-broken-apart-and-is-owned-by-a-team-that-also-manages-the-server-side-functionality-that-supports-the-ui.png)
@@ -138,7 +135,6 @@
 - Single process consists of **separate modules**.
 - If the **module boundaries** are well defined, it can allow for a high degree of **parallel work**, while **avoiding the challenges** of the more **distributed microservice** architecture by having a much **simpler deployment topology**.
 - **Challenge** - **Database** tends to **lack the decomposition** we find in the code-level, leading to **significant challenges** if you want to **pull apart** the monolith in the future.
-
   - **Solution** - Having the database decomposed along the same lines as the modules.
   - Figure 1-8. A modular monolith with a decomposed database:
 
@@ -404,15 +400,12 @@
 
 - One microservice passes data to another microservice purely because the data is **needed by** some other microservice **further downstream**.
 - \*One of the **most problematic** forms of **implementation coupling**.
-
   - Figure 2-4. **Pass-through coupling**, in which data is passed to a microservice purely because another downstream service needs it
-
     - ❌ Changes to _Shipping Manifest_ require a **lockstep rollout** of all three microservices (cascade effect).
 
     ![figure-2-4-pass-through-coupling,-in-which-data-is-passed-to-a-microservice-purely-because-another-downstream-service-needs-it](images/figure-2-4-pass-through-coupling,-in-which-data-is-passed-to-a-microservice-purely-because-another-downstream-service-needs-it.png)
 
 - **First solution** - Bypass the intermediary.
-
   - Figure 2-5. One way to work around pass-through coupling involves communicating directly with the downstream service
 
     ![figure-2-5-one-way-to-work-around-pass-through-coupling-involves-communicating-directly-with-the-downstream-service](images/figure-2-5-one-way-to-work-around-pass-through-coupling-involves-communicating-directly-with-the-downstream-service.png)
@@ -423,7 +416,6 @@
     - Might still be fine, as domain coupling is a **looser form** of coupling.
 
 - **Second solution** - Hide the requirement for a _Shipping Manifest_.
-
   - Figure 2-6. Hiding the need for a _Shipping Manifest_ from the Order Processor
 
     ![figure-2-6-hiding-the-need-for-a-shipping-manifest-from-the-order-processor](images/figure-2-6-hiding-the-need-for-a-shipping-manifest-from-the-order-processor.png)
@@ -434,7 +426,6 @@
   - Shared database, memory or filesystem.
 - Changes to the structure of the data can impact multiple microservices at once.
 - Still acceptable, but **not recommended**:
-
   - Figure 2-7. Multiple services accessing shared static reference data related to countries from the same database
 
     ![figure-2-7-multiple-services-accessing-shared-static-reference-data-related-to-countries-from-the-same-database](images/figure-2-7-multiple-services-accessing-shared-static-reference-data-related-to-countries-from-the-same-database.png)
@@ -442,12 +433,10 @@
   - Since **static reference data** doesn't tend to change and is **read-only**, this is still fine.
 
 - Becomes more problematic:
-
   - If the **structure** of the common data changes more frequently.
   - If multiple microservices are reading and **writing to the same data**.
 
 - **Problem:**
-
   - Figure 2-8. An example of common coupling in which both Order Processor and Warehouse are updating the same order record
 
     ![figure-2-8-an-example-of-common-coupling-in-which-both-order-processor-and-warehouse-are-updating-the-same-order-record](images/figure-2-8-an-example-of-common-coupling-in-which-both-order-processor-and-warehouse-are-updating-the-same-order-record.png)
@@ -459,7 +448,6 @@
     ![figure-2-9-an-overview-of-the-allowable-state-transitions-for-an-order-in-musiccorp](images/figure-2-9-an-overview-of-the-allowable-state-transitions-for-an-order-in-musiccorp.png)
 
 - **Solution** - Ensure that a **single microservice** manages the order state.
-
   - Figure 2-10. Both Order Processor and Warehouse can request that changes be made to an order, but the **Order microservice decides which requests are acceptable**
 
     ![figure-2-10-both-order-processor-and-warehouse-can-request-that-changes-be-made-to-an-order,-but-the-order-microservice-decides-which-requests-are-acceptable](images/figure-2-10-both-order-processor-and-warehouse-can-request-that-changes-be-made-to-an-order,-but-the-order-microservice-decides-which-requests-are-acceptable.png)
@@ -501,7 +489,6 @@
 - Ensure that the code that handles the **state transitions** of an aggregate are **grouped together**, along with the **state itself** (saga state).
 - \*If an outside party requests a **state transition** in an aggregate, the aggregate can say no to **protect business invariants**.
 - Assuming **Finance microservice**'s database stores the **vanilla customer ID** into the `CustID` column.
-
   - **Problem** - Relationship between the `CustID` column and the remote customer is **entirely implicit**.
   - **Solution 1** - Store a **URI** to make the relationship explicit.
   - Figure 2-13. An example of how a relationship between two aggregates in different microservices can be implemented
@@ -526,7 +513,6 @@
 #### Hidden models
 
 - Figure 2-14. A shared model between the finance department and the warehouse
-
   - To work out the valuation of the company, finance employees need information about the stock.
   - May be beneficial to name the internal and external models differently to avoid confusion.
 
@@ -542,7 +528,6 @@
   - Finance - "Customer"
   - Warehouse - "Recipient"
 - May need to link both **local concepts** to a **global customer**, to look up common, shared information.
-
   - Figure 2-13. An example of how a relationship between two aggregates in different microservices can be implemented
 
     ![figure-2-13-an-example-of-how-a-relationship-between-two-aggregates-in-different-microservices-can-be-implemented](images/figure-2-13-an-example-of-how-a-relationship-between-two-aggregates-in-different-microservices-can-be-implemented.png)
@@ -561,7 +546,6 @@
 - By implementing one microservice per coarse-grained context, we can hide future service decomposition decisions.
 - Decision to decompose a service into smaller parts is arguably an **implementation decision**.
 - Figure 2-16. The Warehouse service internally has been split into Inventory and Shipping microservices
-
   - Another form of **information hiding**.
   - **Nested approach** - Chunk up the architecture to **simplify testing**.
 
@@ -647,3 +631,148 @@
 ## Summary
 
 - **Understanding of our domain** can be vital tool in helping us find these **seams**.
+
+# Chapter 3. Splitting the Monolith
+
+## Have a Goal
+
+- Migrating to a microservices architecture **only if** you can't find any easier way to move toward your **end goal**.
+- Don't confuse **activity** (create microservices) with **outcome**.
+- Track your progress against that end goal and **change course** as necessary.
+
+## Incremental Migration
+
+- **Limit the impact** of getting something wrong.
+- Breaking things into **smaller pieces** to identify **quick wins**.
+- Start somewhere small.
+- **Warning:** You won't appreciate the true horror, pain, and suffering that the microservice architecture can bring until you are running in production.
+
+## The Monolith Is Rarely the Enemy
+
+- Monolith architecture **isn't inherently bad**.
+- It is common for the existing monolith architecture to **remain** after a shift towards microservices.
+  - E.g. by **removing the 10%** of functionality that is currently bottlenecked, leaving the **remaining 90%** in the monolith system.
+- Focus on **delivering improvements**, while also, **knowing when to stop**.
+- Situations where **the decommission of the monolith** might be a hard requirement:
+  - Existing monolith is based on **dead or dying technology**.
+  - **Infrastructure** that needs to be **retired**.
+  - **Third-party system** that you want to **ditch**.
+
+### The Dangers of Premature Decomposition
+
+- **Danger** in creating microservices when you have an unclear understanding of the domain.
+- You need a **deep understanding of the domain** to determine the correct boundaries.
+- Having an existing codebase you want to decompose into microservices is **much easier**.
+
+## What to Split First?
+
+- Depends on **WHY** you think microservices are a good idea.
+  - **To scale** - Functionality that currently **constrains the system's ability** to handle load.
+  - **To improve time to market** - Decompose the system based on **volatility**.
+  - To isolate **critical** or **high risk** functionality.
+- Decision is based on a balance between two forces - **how easy** versus the **benefit**
+  - Lean toward the **"easy" end** of the spectrum - **Low-hanging fruit** that **has some impact** on achieving our **end goal**.
+
+## Decomposition by Layer (Horizontal)
+
+- **Three tiers** of a web-based system
+  1. User interface
+  2. Backend application code
+  3. Data
+- **Mapping** from a **microservice** to a **user interface** is often **NOT 1:1**.
+- **Extracting user interface** related to the microservice could be considered a **separate step**.
+  - Caution about ignoring the user interface part.
+  - Sometimes benefits can come from decomposition of the UI. So make sure it doesn't lag too much.
+- **\*Backend code** and **storage** (database) are both **vital to be in scope** when extracting a microservice.
+- Let's consider extracting functionality related to managing a **customer's wishlist**.
+  ![figure-3-2-the-wishlist-code-and-data-in-the-existing-monolithic-application](images/figure-3-2-the-wishlist-code-and-data-in-the-existing-monolithic-application.png)
+
+### Code First (Common)
+
+![figure-3-3-moving-the-wishlist-code-into-a-new-microservice-first-leaving-the-data-in-the-monolithic-database](images/figure-3-3-moving-the-wishlist-code-into-a-new-microservice-first-leaving-the-data-in-the-monolithic-database.png)
+
+- \*Remember, we **HAVEN'T COMPLETED** the decomposition **until** we've also moved out the related data.
+- Tends to deliver more **short-term benefit**.
+- **Benefit** - If we found that it was **impossible to extract** the application code cleanly, we could **abort any future work** (e.g. detangle the database).
+- **Caveat** - If, however, the application code is cleanly extracted but **extracting the data proves to be impossible**, we could be **in trouble**.
+- \*So, **sketch** out how both application code and data will be extracted **before you start**.
+
+### Data First (Rare)
+
+![figure-3-4-the-tables-associated-with-the-wishlist-functionality-are-extracted-first](images/figure-3-4-the-tables-associated-with-the-wishlist-functionality-are-extracted-first.png)
+
+- Can be useful when you are **unsure** whether the data can be separated cleanly.
+- **Short-term benefit** - De-risking the full extraction of the microservice.
+- It forces you **to deal upfront with issues** like **loss of enforced data integrity** or **lack of transactional operations** across both sets of data (ACID transactions).
+
+## Useful Decompositional Patterns
+
+### \*Strangler Fig Pattern (Frequently used)
+
+![alt text](images/figure-3-5-extra-strangler-fig-pattern.png)
+
+- **Intercept calls** to the existing monolithic application.
+  - How to intercept? It depends on the protocol (e.g. HTTP, IPC, etc) used to access the functionality.
+
+  ![figure-3-5-an-overview-of-the-strangler-fig-pattern](images/figure-3-5-an-overview-of-the-strangler-fig-pattern.png)
+
+### Parallel Run
+
+- Useful for migrating **critical** functionality.
+- Running both side by side and comparing the results.
+
+### Feature Toggle
+
+- To switch between **two different implementations**.
+- Has good general applicability, not exclusive to microservice migration.
+- Leave the existing functionality in place during the transition so we can switch between versions.
+- Example of using it with HTTP proxy - Implement the feature toggle in the proxy layer for a simple control.
+
+## Data Decomposition Concerns (Issues)
+
+### Performance
+
+- Databases are good at **joining data** across different tables.
+- When we split databases apart, we end up having to **move join operations** from the data tier up into the microservices (application tier).
+- Generate "Bestseller report" in **Monolith**:
+  ![figure-3-6-a-join-operation-in-the-monolithic-database](images/figure-3-6-a-join-operation-in-the-monolithic-database.png)
+- Generate "Bestseller report" in **Microservice**:
+  - Finance microservice needs to **fetch** data from Catalog microservice.
+
+  ![figure-3-7-replacing-a-database-join-operation-with-service-calls](images/figure-3-7-replacing-a-database-join-operation-with-service-calls.png)
+
+- Ways to mitigate the performance issue:
+  - Lookup the data in **bulk**.
+  - Caching the required data **locally**.
+
+### Data Integrity
+
+- With tables being in the same database, we can define a **foreign key relationship**.
+- With foreign key constraints, we **won't be able to delete records** if they were **referenced**.
+- With separated databases, we no longer have enforcement of the integrity of our data model.
+- **\*Workarounds:**
+  - Use **soft delete**.
+  - **Copy the reference data** into the transaction table. **BUT** need to resolve how to **synchronize changes**.
+
+### Transactions
+
+- **Lose** the safety of the **ACID transactions**.
+- New sources of complexity in managing state changes across multiple microservices.
+
+### Tooling
+
+- Why changing databases is difficult:
+  - **Limited tools** for us to make changes easily.
+  - Database has **state**, as opposed to code, which is fundamentally stateless.
+
+### Reporting Database
+
+- As part of extracting **microservices**, we break apart our databases, as we want to **hide access to our internal data storage**.
+- By hiding access to our databases, we can create **stable interfaces**, which make **independent deployability** possible.
+- But for reporting, we need to access data from more than one microservice.
+- So, we create a **dedicated database** for reporting that is designed for **external access**.
+- It is the **responsibility of the microservice** to push data from internal storage to the externally accessible reporting database.
+  ![figure-3-8-an-overview-of-the-reporting-database-pattern](images/figure-3-8-an-overview-of-the-reporting-database-pattern.png)
+- **\*Two key points:**
+  1. **Information hiding** - Expose only the bare minimum of data. As this is **not a direct mapping**, we use a **different schema** design or **different type of database technology**.
+  2. Reporting database integration should be treated as **API contract** - Microservice maintainer to ensure the API contract is maintained even if the microservice changes its internal implementation detail.

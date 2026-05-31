@@ -776,3 +776,249 @@
 - **\*Two key points:**
   1. **Information hiding** - Expose only the bare minimum of data. As this is **not a direct mapping**, we use a **different schema** design or **different type of database technology**.
   2. Reporting database integration should be treated as **API contract** - Microservice maintainer to ensure the API contract is maintained even if the microservice changes its internal implementation detail.
+
+# Chapter 4. Microservice Communication Styles
+
+## From In-Process to Inter-Process
+
+### Performance
+
+| In-process                                                                                 | Inter-process                                                                                                         |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| The **compiler** and **runtime** can perform many **optimizations**.                       | The **overhead** of a call is **significant** compared to an in-process call.                                         |
+| An API can be more **fine-grained**. E.g. making **1,000 calls** is usually not a concern. | An API that works in-process may **not make sense** across processes.                                                 |
+| Passing a **reference** does not require extra **memory allocation** for the call.         | We need to be mindful of **payload size** between processes.                                                          |
+| Data can be passed directly within the same process.                                       | We may need more efficient **serialization**, or pass a **file location reference** instead.                          |
+| The call stays within the same **process boundary**.                                       | Do not hide **network calls** behind abstractions; developers should know when a call crosses a **process boundary**. |
+
+### Changing API Interfaces
+
+| In-process                                                                                       | Inter-process                                                                                                                       |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| The code **implementing** the interface and the code **calling** it are in the same **process**. | The interface is used across **process boundaries**, often by separate **service consumers**.                                       |
+| A change can usually be released in one **atomic** step.                                         | A **backward-incompatible** change may require **lockstep deployment** with consumers, or a **phased rollout** of the new contract. |
+
+### Error Handling
+
+- **In-process** - Errors either are **expected and easy to handle**, or are catastrophic and can be propagated up the call stack. In short, they are **deterministic**.
+- **Inter-process** - We are vulnerable to errors outside our control, such as **network timeouts**, **network disconnections**, or processes get killed due to **out of memory**.
+- **Five types** of failure mode in **inter-process** communication
+  1. **_Crash failure_**
+  2. **_Omission failure_** - Didn't get a response or expecting a downstream microservice to be firing messages, and it just stops.
+  3. **_Timing failure_** - Something happened **too late** or **too early**.
+  4. **_Response failure_** - Information is missing in the response.
+  5. **_Arbitrary failure_** - Unable to determine if the failure has occurred.
+- Many of inter-process errors are **often transient** in nature.
+- \*It is important to provide a **richer set of error semantics** so clients can take the appropriate action. E.g.
+  - **404 Not Found** - Should stop retrying.
+  - **503 Service Unavailable** - Issue may be temporary, so retrying could succeed.
+
+## Styles of Microservice Communication
+
+![figure-4-1-different-styles-of-inter-microservice-communication-along-with-example-implementing-technologies](images/figure-4-1-different-styles-of-inter-microservice-communication-along-with-example-implementing-technologies.png)
+
+- **_Synchronous blocking_** - Block operation **waiting for the response**.
+- **_Asynchronous nonblocking_** - **Emit a call** and **continue processing** regardless whether the call is received.
+- **_Request-response_** - Send a request and **expect** to receive a response.
+- **_Event-driven_** - **Emit events**. Microservice emitting the event is **unaware** of which microservices, if any, consume the events.
+- **_Common data_** - Collaborate via some **shared data source**.
+
+---
+
+- **Deciding factors / requirements / constraints:**
+  - Reliable communication
+  - Acceptable latency
+  - The ability to scale
+  - Security-related aspects
+- **Start with** deciding whether a **request-response** or an **event-driven** is more appropriate for the given situation.
+- For **request-response**, it supports both **synchronous** and **asynchronous** implementations, so we have a **second choice to make**.
+- For **event-driven**, it is limited to **asynchronous**.
+
+## Pattern: Synchronous Blocking (Request-response)
+
+![figure-4-2-order-processor-sends-a-synchronous-call-to-the-loyalty-microservice-blocks-and-waits-for-a-response](images/figure-4-2-order-processor-sends-a-synchronous-call-to-the-loyalty-microservice-blocks-and-waits-for-a-response.png)
+
+- **Use when** the **result of the call** is needed for some **further operation**, or to make sure the call worked (**critical operation**).
+
+### Advantages
+
+- **Simple** and **familiar** (e.g. running a SQL query, making an HTTP request)
+
+### Disadvantages
+
+- Having **temporal coupling**.
+- When the call **fails** (service unavailable), the client has to perform **compensating action**, such as immediate retry, buffering the call to retry later, or giving up.
+- Coupling is **two-way** - If the downstream service wants to send a response back, but the upstream instance has died, the response will get lost.
+- The use of synchronous calls can make a system **vulnerable to cascading issues** caused by **downstream outages**.
+
+### Where to Use It
+
+- Simple microservice architectures.
+- **Problem:** When you start having **more chains of calls**.
+  - An issue in any of the four involved microservices could cause the whole operation to fail.
+  - Can cause significant **_resource contention_** due to opened network connections.
+
+  ![figure-4-3-checking-for-potentially-fraudulent-behavior-as-part-of-order-processing-flow](images/figure-4-3-checking-for-potentially-fraudulent-behavior-as-part-of-order-processing-flow.png)
+
+- **Solution:** Take the "Fraud Detection" out of the main flow, and have it **run in the background**.
+  - This is something that could be **checked earlier** in the payment process.
+  - One fewer dependency to worry.
+
+  ![figure-4-4-moving-fraud-detection-to-a-background-process-can-reduce-concerns-around-the-length-of-the-call-chain](images/figure-4-4-moving-fraud-detection-to-a-background-process-can-reduce-concerns-around-the-length-of-the-call-chain.png)
+
+## Pattern: Asynchronous Nonblocking
+
+- **Three** most common styles/types:
+  1. **_Communications through common data_** - **Shared database** or filesystem.
+  2. **_Request-response_**
+  3. **_Event-driven interaction_** - **Broadcast** an event (something that has happened). Interested services (aka consumers) can **listen** for the events and **react** accordingly.
+
+### Advantages
+
+- Microservices that receive the call **do not need to be reachable at the same time** the call is made.
+- **Avoid temporal coupling**.
+- Useful if the functionality **takes a long time to process**.
+- **Example:**
+  - A form of **asynchronous request-response** communication.
+
+  ![figure-4-5-the-order-processor-kicks-off-the-process-to-package-and-ship-an-order-which-is-done-in-an-asynchronous-fashion](images/figure-4-5-the-order-processor-kicks-off-the-process-to-package-and-ship-an-order-which-is-done-in-an-asynchronous-fashion.png)
+
+### Disadvantages
+
+- More **complex** and many **choices** (a bewildering list of technology).
+- Many **edge cases** to handle.
+
+### Where to Use It
+
+- Have to consider which **type** of asynchronous communication to use, as each type has its own **trade-offs**. All depends on specific **use cases**.
+- Obvious candidates - **long-running processes**, **long call chains**
+
+## Pattern: Communication Through Common Data
+
+![figure-4-6-one-microservice-writes-out-a-file-that-other-microservices-make-use-of](images/figure-4-6-one-microservice-writes-out-a-file-that-other-microservices-make-use-of.png)
+
+- One microservice **puts data into a defined location** (e.g. dropping a file in a location), and another microservice then makes use of the data.
+
+### Implementation
+
+- Need some sort of **persistent store**, such as file system.
+- Periodically scan a file system, note the presence of a new file, and react to it accordingly.
+- **Downstream microservice** needs its own mechanism **to identify when new data is available**, such as polling.
+- Two **examples** of this pattern are the **data lake** and the **data warehouse**.
+  - They exist at **opposite ends** of the spectrum regarding **coupling**.
+  - **Data lake** (low coupling) - Sources upload **raw data**, and downstream consumers are expected to know how to process the information.
+  - **Data warehouse** (high coupling) - **Structured** data store. Microservices pushing data to the data warehouse need to know the structure. If the structure changes in a backward-incompatible way, then these producers will need to be updated.
+  - Assumption: The flow of information is in a **single direction**.
+- **Problematic implementation** - The use of a **shared database** in which multiple microservices **both read and write**.
+
+### Advantages
+
+- Can be implemented very simply using common technology.
+- Enables **interoperability**
+
+### Disadvantages
+
+- Unlikely to be useful in **low-latency** situations.
+- If you are using this pattern for very **large volumes** of data, it's less likely that low latency is high on your list of requirements.
+- To process large volumes of data in **more "real time"**, use **streaming technology** like Kafka.
+
+### Where to Use It
+
+- Enable interoperability between processes that have **restrictions on the use of technology**, such as integrating with an **existing system**.
+- To share large volumes of data.
+
+## Pattern: Request-Response Communication
+
+### Implementation: Synchronous versus Asynchronous
+
+- **Synchronous** - Microservice sending the response **doesn't really need to know about the microservice that sent the request**. It's just **sending stuff back over an inbound connection**.
+- **Asynchronous** example:
+  - Request is sent as a **message** over a message broker.
+  - Handler (Warehouse) **sends the response back to a queue** that the requester (Order Processor) is reading from.
+  - Handler (Warehouse) **needs to know where to route the response**, such as send the response back **over another queue**.
+
+  ![figure-4-10-using-queues-to-send-stock-reservation-requests](images/figure-4-10-using-queues-to-send-stock-reservation-requests.png)
+
+- **Asynchronous**:
+  - Handler that receives the request **needs either to know implicitly where to route the response**, or **to be told** where the response should go.
+  - With a queue, multiple requests could be **buffered up**.
+  - Requester might need to **relate** the response to the original request, since the response may **not come back to the same instance**.
+  - Requester has to **store any state associated with the original request** into a database.
+- **All forms** of request-response interaction are likely going to require some form of **timeout handling**.
+
+### Where to Use It
+
+- For any situation in which the **result** of the request is **needed before further processing**.
+- In situations where a microservice wants to know if a **call didn't work** so that it can carry out some sort of **compensating action**, like a retry.
+
+## Pattern: Event-Driven Communication
+
+- Rather **asking**, **emits events** instead.
+- An event is a **statement** about something that has **occurred**.
+- Microservice emitting the event has **no knowledge** of the intent of other microservices to use the event, and it may **not even be aware** that other microservices **exist**.
+- **Example:** The process of packaging up an order
+  - Producer (Warehouse) **broadcasts events**.
+
+  ![figure-4-11-the-warehouse-emits-events-that-some-downstream-microservices-subscribe-to](images/figure-4-11-the-warehouse-emits-events-that-some-downstream-microservices-subscribe-to.png)
+
+- Event-driven interactions are much more **loosely coupled**.
+- Having the **inversion of responsibility** when compared to request-response calls.
+- With request-response, the microservice sending the request **knows what should be done**.
+- Events and Messages - Message is the **medium**. Event is the **payload** (fact).
+
+### Implementation
+
+- Use message broker.
+- \*Keep your **middleware dumb**, and keep the **smarts in the endpoints**.
+
+### What's in an Event?
+
+#### Just an ID
+
+![figure-4-13-the-notifications-microservice-needs-to-request-further-details-from-the-customer-microservice-that-are-not-included-in-the-event](images/figure-4-13-the-notifications-microservice-needs-to-request-further-details-from-the-customer-microservice-that-are-not-included-in-the-event.png)
+
+- **Downsides:**
+  - Notifications microservice now has to know about the Customer microservice, adding additional **domain coupling**.
+  - In a situation with a **large number of receiving microservices**, the producer might get a **large number of requests**.
+
+#### Fully detailed events (Preferred)
+
+![figure-4-14-an-event-with-more-information-in-it-can-allow-receiving-microservices-to-act-without-requiring-further-calls-to-the-source-of-the-event](images/figure-4-14-an-event-with-more-information-in-it-can-allow-receiving-microservices-to-act-without-requiring-further-calls-to-the-source-of-the-event.png)
+
+- Put everything into an event that you would be happy otherwise sharing via an API.
+- Make consumers more **self-sufficient**.
+- Consumers **might never need to know** the producer exists.
+- Events with more information can double as a **historical record** of what happened to a given entity.
+- Could help in building an **auditing system** or **event sourcing**.
+- **Downsides:**
+  - Data associated with an event could be **large**. When you **start to worry** about the size of your events, use a **hybrid approach**.
+  - **Concerns:** To **limit** the scope of which microservices can see what kind of **sensitive data**, such as PII and payment card details. A way to **solve** this could be to send **two different types of events**.
+- Once we put data into an **event**, it becomes part of our **contract** with the outside world.
+- **Information hiding** is still an important concept in event-driven collaboration.
+
+### Where to Use It
+
+- Information wants to be **broadcast**.
+- To **invert intent** - Letting downstream microservices work this out for themselves.
+- Focus on **loose coupling** more than other factors.
+- **Caution:** Comes with new sources of **complexity**.
+- Author's **default** microservice communication style (opinionated).
+- Far more teams replacing request-response interactions with event-driven interactions than the reverse.
+
+## Proceed with Caution
+
+- **Event-driven architectures** do lead to an increase in **complexity**.
+- **Not just** the complexity required to manage publishing and subscribing to messages, but also complexity in **other problems**.
+- Considerations for handling **async request-response**:
+  - Does the response come back to the same node that initiated the request?
+  - If so, what happens if that node is down?
+  - If not, do I need to store information somewhere?
+- Considerations for handling **synchronous blocking call**:
+  - If you get a **timeout**, did this happen because the **request got lost** and the downstream party didn't receive it? or did the request get through, but the **response got lost**?
+  - Implement **idempotency** to handle this.
+- Other concerns:
+  - **Poison / Malformed message** handling
+  - **Retry strategy** - Maximum retry, exponential backoff, etc.
+  - **Dead letter management** - To view and replay messages.
+- Ensure you have good **monitoring** in place.
+- Use **correlation IDs**.
